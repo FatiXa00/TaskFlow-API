@@ -1,0 +1,27 @@
+## Ignore Visual Studio files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+x64/
+x86/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# NuGet
+packages/
+*.nupkg
+
+# Visual Studio cache
+*.vsidx
+*.cache
