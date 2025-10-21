@@ -1,19 +1,26 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using System.Security.Claims;
 using TaskFlow.Application.DTOs;
 using TaskFlow.Application.Interfaces;
 using TaskFlow.Domain.Entities;
+using TaskFlow.Hubs;
 
 namespace TaskFlow.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class TasksController : ControllerBase
 {
     private readonly ITaskRepository _taskRepository;
+    private readonly IHubContext<TaskHub> _hubContext;
 
-    public TasksController(ITaskRepository taskRepository)
+    public TasksController(ITaskRepository taskRepository, IHubContext<TaskHub> hubContext)
     {
         _taskRepository = taskRepository;
+        _hubContext = hubContext;
     }
 
     // GET: api/tasks
@@ -61,6 +68,32 @@ public class TasksController : ControllerBase
         };
 
         return Ok(taskDto);
+    }
+
+    // GET: api/tasks/my-tasks
+    [HttpGet("my-tasks")]
+    public async Task<ActionResult<IEnumerable<TaskDto>>> GetMyTasks()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { message = "Invalid token" });
+
+        var tasks = await _taskRepository.GetTasksByUserIdAsync(userId);
+        var taskDtos = tasks.Select(t => new TaskDto
+        {
+            Id = t.Id,
+            Title = t.Title,
+            Description = t.Description,
+            Status = t.Status.ToString(),
+            Priority = t.Priority.ToString(),
+            CreatedAt = t.CreatedAt,
+            UpdatedAt = t.UpdatedAt,
+            DueDate = t.DueDate,
+            CreatedByUserId = t.CreatedByUserId,
+            CreatedByUsername = t.CreatedBy?.Username ?? "Unknown"
+        });
+
+        return Ok(taskDtos);
     }
 
     // GET: api/tasks/user/{userId}
@@ -113,10 +146,14 @@ public class TasksController : ControllerBase
 
     // POST: api/tasks
     [HttpPost]
-    public async Task<ActionResult<TaskDto>> CreateTask([FromBody] CreateTaskDto createDto, [FromQuery] Guid userId)
+    public async Task<ActionResult<TaskDto>> CreateTask([FromBody] CreateTaskDto createDto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { message = "Invalid token" });
 
         var task = new TaskItem
         {
@@ -144,6 +181,9 @@ public class TasksController : ControllerBase
             CreatedByUserId = createdTask.CreatedByUserId
         };
 
+        // 🔥 NOTIFICATION EN TEMPS RÉEL - Tous les clients connectés reçoivent cette notification!
+        await _hubContext.Clients.All.SendAsync("TaskCreated", taskDto);
+
         return CreatedAtAction(nameof(GetTaskById), new { id = taskDto.Id }, taskDto);
     }
 
@@ -154,6 +194,13 @@ public class TasksController : ControllerBase
         var task = await _taskRepository.GetByIdAsync(id);
         if (task == null)
             return NotFound(new { message = "Task not found" });
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { message = "Invalid token" });
+
+        if (task.CreatedByUserId != userId)
+            return Forbid();
 
         if (!string.IsNullOrEmpty(updateDto.Title))
             task.Title = updateDto.Title;
@@ -174,6 +221,22 @@ public class TasksController : ControllerBase
 
         await _taskRepository.UpdateAsync(task);
 
+        var taskDto = new TaskDto
+        {
+            Id = task.Id,
+            Title = task.Title,
+            Description = task.Description,
+            Status = task.Status.ToString(),
+            Priority = task.Priority.ToString(),
+            CreatedAt = task.CreatedAt,
+            UpdatedAt = task.UpdatedAt,
+            DueDate = task.DueDate,
+            CreatedByUserId = task.CreatedByUserId
+        };
+
+        // 🔥 NOTIFICATION EN TEMPS RÉEL - Tous les clients savent que la tâche a été modifiée!
+        await _hubContext.Clients.All.SendAsync("TaskUpdated", taskDto);
+
         return NoContent();
     }
 
@@ -185,8 +248,23 @@ public class TasksController : ControllerBase
         if (task == null)
             return NotFound(new { message = "Task not found" });
 
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { message = "Invalid token" });
+
+        if (task.CreatedByUserId != userId)
+            return Forbid();
+
         await _taskRepository.DeleteAsync(id);
+
+        // 🔥 NOTIFICATION EN TEMPS RÉEL - Tous les clients savent que la tâche a été supprimée!
+        await _hubContext.Clients.All.SendAsync("TaskDeleted", id);
 
         return NoContent();
     }
 }
+
+//** Flow temps réel:**
+ 
+//User A crée une tâche → API → SignalR Hub → TOUS les clients(A, B, C...)
+//reçoivent la notification instantanément! ⚡

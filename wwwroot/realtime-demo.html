@@ -1,0 +1,431 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow - Real-Time Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .auth-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+            .auth-section h2 {
+                color: #667eea;
+                margin-bottom: 20px;
+            }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+
+            input:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-weight: 600;
+        }
+
+            button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            }
+
+            button:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+        .status {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+            .status.connected {
+                background: #10b981;
+                color: white;
+            }
+
+            .status.disconnected {
+                background: #ef4444;
+                color: white;
+            }
+
+        .tasks-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .tasks-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+            .tasks-header h2 {
+                color: #667eea;
+            }
+
+        #tasksList {
+            list-style: none;
+        }
+
+        .task-item {
+            background: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .task-item.new {
+            animation: pulse 1s ease;
+            background: #fef3c7;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.02);
+            }
+        }
+
+        .task-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 15px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+            .badge.status {
+                background: #3b82f6;
+                color: white;
+            }
+
+            .badge.priority {
+                background: #f59e0b;
+                color: white;
+            }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            animation: slideInRight 0.3s ease;
+            z-index: 1000;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .notification.success {
+            border-left: 5px solid #10b981;
+        }
+
+        .notification.info {
+            border-left: 5px solid #3b82f6;
+        }
+
+        .notification.warning {
+            border-left: 5px solid #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 TaskFlow - Real-Time Demo</h1>
+
+        <div class="auth-section">
+            <h2>🔐 Authentication</h2>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="email" value="test@example.com">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="password" value="Password123!">
+            </div>
+            <button onclick="login()">Login</button>
+            <span id="connectionStatus" class="status disconnected">Disconnected</span>
+        </div>
+
+        <div class="tasks-section">
+            <div class="tasks-header">
+                <h2>📋 Tasks (Real-Time Updates)</h2>
+                <button onclick="createDemoTask()" id="createBtn" disabled>Create Demo Task</button>
+            </div>
+            <ul id="tasksList"></ul>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        let connection = null;
+        let token = null;
+        const API_BASE = window.location.origin;
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    token = data.token;
+                    showNotification('✅ Login successful!', 'success');
+                    await connectSignalR();
+                    await loadTasks();
+                    document.getElementById('createBtn').disabled = false;
+                } else {
+                    showNotification('❌ Login failed! Try registering first via Swagger', 'warning');
+                }
+            } catch (error) {
+                showNotification('❌ Error: ' + error.message, 'warning');
+            }
+        }
+
+        async function connectSignalR() {
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl(`${API_BASE}/hubs/task`, {
+                    accessTokenFactory: () => token
+                })
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on("TaskCreated", (task) => {
+                showNotification(`🆕 New task created: ${task.title}`, 'info');
+                addTaskToList(task, true);
+            });
+
+            connection.on("TaskUpdated", (task) => {
+                showNotification(`✏️ Task updated: ${task.title}`, 'info');
+                updateTaskInList(task);
+            });
+
+            connection.on("TaskDeleted", (taskId) => {
+                showNotification(`🗑️ Task deleted`, 'warning');
+                removeTaskFromList(taskId);
+            });
+
+            try {
+                await connection.start();
+                document.getElementById('connectionStatus').className = 'status connected';
+                document.getElementById('connectionStatus').textContent = 'Connected';
+                showNotification('🔥 Real-time connection established!', 'success');
+            } catch (error) {
+                console.error('SignalR connection error:', error);
+            }
+        }
+
+        async function loadTasks() {
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks/my-tasks`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const tasks = await response.json();
+                    document.getElementById('tasksList').innerHTML = '';
+                    tasks.forEach(task => addTaskToList(task, false));
+                }
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+            }
+        }
+
+        async function createDemoTask() {
+            const demoTask = {
+                title: `Demo Task ${new Date().toLocaleTimeString()}`,
+                description: 'Created via real-time demo!',
+                priority: Math.floor(Math.random() * 4)
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(demoTask)
+                });
+
+                if (response.ok) {
+                    showNotification('✅ Task created! Watch other tabs update!', 'success');
+                }
+            } catch (error) {
+                console.error('Error creating task:', error);
+            }
+        }
+
+        function addTaskToList(task, isNew) {
+            const tasksList = document.getElementById('tasksList');
+            const li = document.createElement('li');
+            li.className = `task-item ${isNew ? 'new' : ''}`;
+            li.id = `task-${task.id}`;
+
+            li.innerHTML = `
+                <div class="task-title">${task.title}</div>
+                <div class="task-meta">
+                    <span class="badge status">${task.status}</span>
+                    <span class="badge priority">Priority: ${task.priority}</span>
+                    <span>Created: ${new Date(task.createdAt).toLocaleString()}</span>
+                </div>
+            `;
+
+            tasksList.insertBefore(li, tasksList.firstChild);
+
+            if (isNew) {
+                setTimeout(() => li.classList.remove('new'), 1000);
+            }
+        }
+
+        function updateTaskInList(task) {
+            const element = document.getElementById(`task-${task.id}`);
+            if (element) {
+                element.innerHTML = `
+                    <div class="task-title">${task.title}</div>
+                    <div class="task-meta">
+                        <span class="badge status">${task.status}</span>
+                        <span class="badge priority">Priority: ${task.priority}</span>
+                        <span>Updated: ${new Date(task.updatedAt || task.createdAt).toLocaleString()}</span>
+                    </div>
+                `;
+                element.classList.add('new');
+                setTimeout(() => element.classList.remove('new'), 1000);
+            }
+        }
+
+        function removeTaskFromList(taskId) {
+            const element = document.getElementById(`task-${taskId}`);
+            if (element) {
+                element.style.opacity = '0';
+                setTimeout(() => element.remove(), 300);
+            }
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

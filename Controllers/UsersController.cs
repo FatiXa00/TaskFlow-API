@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Application.DTOs;
 using TaskFlow.Application.Interfaces;
 using TaskFlow.Domain.Entities;
@@ -18,6 +19,8 @@ public class UsersController : ControllerBase
 
     // GET: api/users
     [HttpGet]
+    [Authorize]  // ← Nécessite l'authentification
+
     public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsers()
     {
         var users = await _userRepository.GetAllAsync();
@@ -34,6 +37,8 @@ public class UsersController : ControllerBase
 
     // GET: api/users/{id}
     [HttpGet("{id}")]
+    [Authorize]  // ← Nécessite l'authentification
+
     public async Task<ActionResult<UserDto>> GetUserById(Guid id)
     {
         var user = await _userRepository.GetByIdAsync(id);
@@ -53,6 +58,8 @@ public class UsersController : ControllerBase
 
     // GET: api/users/email/{email}
     [HttpGet("email/{email}")]
+    [Authorize]  // ← Nécessite l'authentification
+
     public async Task<ActionResult<UserDto>> GetUserByEmail(string email)
     {
         var user = await _userRepository.GetByEmailAsync(email);
@@ -116,6 +123,7 @@ public class UsersController : ControllerBase
 
     // POST: api/users/login
     [HttpPost("login")]
+
     public async Task<ActionResult<UserDto>> Login([FromBody] LoginDto loginDto)
     {
         if (!ModelState.IsValid)
@@ -145,6 +153,8 @@ public class UsersController : ControllerBase
 
     // DELETE: api/users/{id}
     [HttpDelete("{id}")]
+    [Authorize]  // ← Nécessite l'authentification
+
     public async Task<ActionResult> DeleteUser(Guid id)
     {
         var user = await _userRepository.GetByIdAsync(id);
